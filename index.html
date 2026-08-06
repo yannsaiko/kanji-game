@@ -18,10 +18,51 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ネプリーグ風 漢字ツアーズ AI（Web版）</title>
-    <!-- Tailwind CSS CDN for styling -->
-    <script src="https://cdn.tailwindcss.com"></script>
+    <title>ネプリーグ風 漢字ツアーズ AI</title>
     <style>
+        * { box-sizing: border-box; }
+        body { 
+            background: #0f172a; 
+            color: white; 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+            margin: 0; padding: 0; 
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            min-height: 100vh; overflow-x: hidden;
+        }
+        .container {
+            width: 100%; max-width: 450px; padding: 15px; text-align: center;
+            display: flex; flex-direction: column; align-items: center;
+        }
+        .hidden { display: none !important; }
+        .btn { 
+            background: #2563eb; color: white; padding: 14px; margin: 6px 0; border: none; border-radius: 12px; 
+            font-size: 18px; font-weight: bold; width: 100%; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+        }
+        .btn:active { transform: scale(0.98); background: #1d4ed8; }
+
+        .key-btn { 
+            background: #334155; color: white; padding: 10px 0; margin: 2px; border: none; border-radius: 6px; 
+            font-size: 15px; font-weight: bold; cursor: pointer; flex: 1; box-shadow: 0 2px 3px rgba(0,0,0,0.2);
+        }
+        .key-btn:active { background: #1e293b; }
+        .key-row { display: flex; width: 100%; justify-content: space-between; margin-bottom: 3px; }
+
+        input, select { 
+            width: 100%; padding: 12px; font-size: 18px; text-align: center; border-radius: 10px; 
+            border: 2px solid #cbd5e1; margin-bottom: 8px; background: white; color: black; font-weight: bold;
+        }
+        
+        .box { 
+            background: #1e293b; border: 3px solid #eab308; border-radius: 16px; padding: 16px; margin: 10px 0; width: 100%; 
+            box-shadow: 0 8px 12px rgba(0, 0, 0, 0.3); position: relative;
+        }
+        .modal {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(5px);
+            display: flex; align-items: center; justify-content: center; padding: 20px; z-index: 50;
+        }
+        .modal-content {
+            background: #1e1b4b; border: 2px solid #6366f1; border-radius: 20px; padding: 24px; width: 100%; max-width: 400px; text-align: center;
+        }
         @keyframes shake {
             0% { transform: translateX(0); }
             25% { transform: translateX(-10px); }
@@ -29,294 +70,369 @@
             75% { transform: translateX(-10px); }
             100% { transform: translateX(0); }
         }
-        .animate-shake { animation: shake 0.3s ease-in-out; }
-        @keyframes pulse-red {
-            0%, 100% { transform: scale(1); opacity: 0.4; }
-            50% { transform: scale(1.15); opacity: 0.8; }
-        .animate-pulse-red { animation: pulse-red 1s infinite; }
+        .shake { animation: shake 0.3s ease-in-out; }
+        
+        /* ⭐ 認証インジケーター（緑／赤の点） */
+        .status-dot {
+            width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-left: 6px;
+            box-shadow: 0 0 8px currentColor;
+        }
+        .dot-gray { background-color: #94a3b8; color: #94a3b8; }
+        .dot-green { background-color: #22c55e; color: #22c55e; }
+        .dot-red { background-color: #ef4444; color: #ef4444; }
     </style>
 </head>
-<body class="bg-slate-950 text-white font-sans select-none min-h-screen flex flex-col justify-between overflow-x-hidden">
+<body>
 
-    <!-- ヘッダー / 設定ボタン -->
-    <header class="p-4 flex justify-between items-center bg-black/40 backdrop-blur border-b border-white/10">
-        <h1 class="font-black text-yellow-400 tracking-widest text-lg">漢字ツアーズ AI</h1>
-        <button onclick="openSettings()" class="bg-white/10 hover:bg-white/20 px-3 py-1 rounded-full text-sm font-bold flex items-center gap-1">
-            ⚙️ 設定 / APIキー
-        </button>
-    </header>
-
-    <!-- メイン画面コンテナ -->
-    <main class="flex-1 flex flex-col items-center justify-center p-4 max-w-lg mx-auto w-full">
-
-        <!-- 1. タイトル画面 -->
-        <div id="screen-title" class="w-full text-center space-y-6">
-            <div class="space-y-2">
-                <span class="text-xs tracking-widest font-bold text-yellow-400 uppercase">ネプリーグ風 漢字ゲーム</span>
-                <h2 class="text-4xl font-black drop-shadow-lg text-white">漢字ツアーズ AI</h2>
-            </div>
-            
-            <div class="bg-cyan-950/50 border border-cyan-500/30 p-3 rounded-xl text-sm text-cyan-200 font-bold">
-                🤖 AI実況「遊たい難易度コースを選択してください！」
-            </div>
-
-            <div class="space-y-3" id="mode-buttons">
-                <!-- モードボタンはJSで動的生成 -->
-            </div>
+    <div class="container">
+        <!-- ヘッダー設定ボタン -->
+        <div style="width: 100%; display: flex; justify-content: flex-end; margin-bottom: 5px;">
+            <button onclick="openSettings()" style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: white; padding: 6px 14px; border-radius: 20px; font-weight: bold; cursor: pointer;">
+                ⚙️ 設定（一時停止）
+            </button>
         </div>
 
-        <!-- 2. ローディング画面 -->
-        <div id="screen-loading" class="hidden text-center space-y-6 w-full">
-            <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-yellow-400 mx-auto"></div>
-            <div class="space-y-2">
-                <h3 class="text-xl font-bold text-yellow-400">⚡️ Groq超高速AIが問題を構築中...</h3>
-                <p class="text-sm text-gray-400" id="loading-text">AIがオリジナル漢字クイズを作成しています。</p>
+        <!-- 1. タイトル画面 -->
+        <div id="screen-title" style="width: 100%;">
+            <div style="display: flex; align-items: center; justify-content: center; gap: 4px; margin-bottom: 5px;">
+                <h1 style="font-size: 28px; color: #facc15; margin: 0;">漢字ツアーズ AI</h1>
+                <!-- ⭐ 認証ステータスドット -->
+                <span id="api-status-dot" class="status-dot dot-gray" title="API認証確認中..."></span>
             </div>
+            <p style="color: #94a3b8; margin-bottom: 20px; font-size: 14px;" id="ai-status-text">AI接続を確認中...</p>
+            
+            <button class="btn" onclick="startGame('小学生')">🎒 小学生コース</button>
+            <button class="btn" onclick="startGame('中学生')">✏️ 中学生コース</button>
+            <button class="btn" onclick="startGame('高校生')">🏫 高校生コース</button>
+            <button class="btn" onclick="startGame('一般常識')">💼 一般常識コース</button>
+            <button class="btn" onclick="startGame('漢字王')">👑 漢字王コース</button>
+        </div>
+
+        <!-- 2. AI生成ローディング画面 -->
+        <div id="screen-loading" class="hidden" style="width: 100%; padding: 40px 0;">
+            <div style="font-size: 40px; margin-bottom: 15px;">🤖⚡️</div>
+            <h2 style="color: #facc15; font-size: 22px; margin-bottom: 10px;">Groq AIが問題を作成中...</h2>
+            <p id="loading-subtext" style="color: #94a3b8; font-size: 13px;">難易度に応じたオリジナルクイズを構築しています。</p>
         </div>
 
         <!-- 3. ゲームプレイ画面 -->
-        <div id="screen-game" class="hidden w-full space-y-4">
-            <!-- ステージ & ライフ & タイマー -->
-            <div class="flex justify-between items-center bg-black/50 p-3 rounded-xl border border-white/10">
-                <div>
-                    <div class="text-xs font-bold text-yellow-400" id="stage-text">STAGE 1 / 10</div>
-                    <div class="text-sm font-black text-cyan-300" id="category-text">【小学生】</div>
+        <div id="screen-game" class="hidden" style="width: 100%;">
+            <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; margin-bottom: 8px;">
+                <div style="text-align: left;">
+                    <div id="stage-text" style="font-size: 12px; font-weight: bold; color: #facc15;">STAGE 1 / 5</div>
+                    <div id="category-text" style="font-size: 13px; font-weight: bold; color: #38bdf8;">【小学生】</div>
                 </div>
-                <div class="flex gap-1 text-red-500 text-lg" id="lives-container">
-                    ❤️❤️❤️
+                <div id="lives-container" style="font-size: 18px;">❤️❤️❤️</div>
+                <div style="background: rgba(239, 68, 68, 0.3); border: 1px solid #ef4444; padding: 4px 10px; border-radius: 8px; font-weight: bold;">
+                    ⏱ <span id="timer-text">30</span>秒
                 </div>
-                <div class="flex items-center gap-1 bg-red-950/60 border border-red-500/40 px-3 py-1 rounded-lg">
-                    <span class="text-red-400 text-sm">⏱</span>
-                    <span class="font-black text-lg text-white" id="timer-text">30</span>
+            </div>
+
+            <div style="background: rgba(255,255,255,0.1); padding: 6px 10px; border-radius: 8px; font-size: 12px; font-weight: bold; width: 100%; margin-bottom: 8px; text-align: left;">
+                🤖 <span id="ai-message">AI「バトルスタート！」</span>
+            </div>
+
+            <div class="box" id="enemy-box">
+                <div id="boss-badge" class="hidden" style="position: absolute; top: 8px; right: 12px; background: #dc2626; color: white; font-size: 11px; font-weight: bold; padding: 2px 8px; border-radius: 6px;">⚠️ BOSS</div>
+                <div id="enemy-emoji" style="font-size: 40px; margin-bottom: 2px;">👾</div>
+                <div id="kanji-display" style="font-size: 65px; font-weight: bold; line-height: 1.1;">川</div>
+            </div>
+
+            <input type="text" id="user-input" placeholder="ひらがなを入力">
+
+            <button id="flick-submit-btn" class="btn hidden" style="background: #2563eb; margin-bottom: 8px;" onclick="submitAnswer()">決定する ➔</button>
+            
+            <div id="custom-keyboard" style="width: 100%; background: rgba(0,0,0,0.4); padding: 6px; border-radius: 10px;">
+                <div class="key-row"><button class="key-btn" onclick="addKey('あ')">あ</button><button class="key-btn" onclick="addKey('い')">い</button><button class="key-btn" onclick="addKey('う')">う</button><button class="key-btn" onclick="addKey('え')">え</button><button class="key-btn" onclick="addKey('お')">お</button></div>
+                <div class="key-row"><button class="key-btn" onclick="addKey('か')">か</button><button class="key-btn" onclick="addKey('き')">き</button><button class="key-btn" onclick="addKey('く')">く</button><button class="key-btn" onclick="addKey('け')">け</button><button class="key-btn" onclick="addKey('こ')">こ</button></div>
+                <div class="key-row"><button class="key-btn" onclick="addKey('さ')">さ</button><button class="key-btn" onclick="addKey('し')">し</button><button class="key-btn" onclick="addKey('す')">す</button><button class="key-btn" onclick="addKey('せ')">せ</button><button class="key-btn" onclick="addKey('そ')">そ</button></div>
+                <div class="key-row"><button class="key-btn" onclick="addKey('た')">た</button><button class="key-btn" onclick="addKey('ち')">ち</button><button class="key-btn" onclick="addKey('つ')">つ</button><button class="key-btn" onclick="addKey('て')">て</button><button class="key-btn" onclick="addKey('と')">と</button></div>
+                <div class="key-row"><button class="key-btn" onclick="addKey('な')">な</button><button class="key-btn" onclick="addKey('に')">に</button><button class="key-btn" onclick="addKey('ぬ')">ぬ</button><button class="key-btn" onclick="addKey('ね')">ね</button><button class="key-btn" onclick="addKey('の')">の</button></div>
+                <div class="key-row"><button class="key-btn" onclick="addKey('は')">は</button><button class="key-btn" onclick="addKey('ひ')">ひ</button><button class="key-btn" onclick="addKey('ふ')">ふ</button><button class="key-btn" onclick="addKey('へ')">へ</button><button class="key-btn" onclick="addKey('ほ')">ほ</button></div>
+                <div class="key-row"><button class="key-btn" onclick="addKey('ま')">ま</button><button class="key-btn" onclick="addKey('み')">み</button><button class="key-btn" onclick="addKey('む')">む</button><button class="key-btn" onclick="addKey('め')">め</button><button class="key-btn" onclick="addKey('も')">も</button></div>
+                <div class="key-row"><button class="key-btn" onclick="addKey('や')">や</button><button class="key-btn" style="opacity:0.2;">-</button><button class="key-btn" onclick="addKey('ゆ')">ゆ</button><button class="key-btn" style="opacity:0.2;">-</button><button class="key-btn" onclick="addKey('よ')">よ</button></div>
+                <div class="key-row"><button class="key-btn" onclick="addKey('ら')">ら</button><button class="key-btn" onclick="addKey('り')">り</button><button class="key-btn" onclick="addKey('る')">る</button><button class="key-btn" onclick="addKey('れ')">れ</button><button class="key-btn" onclick="addKey('ろ')">ろ</button></div>
+                <div class="key-row">
+                    <button class="key-btn" onclick="addKey('わ')">わ</button><button class="key-btn" onclick="addKey('を')">を</button><button class="key-btn" onclick="addKey('ん')">ん</button><button class="key-btn" onclick="addKey('っ')">っ</button><button class="key-btn" onclick="addKey('ー')">ー</button>
                 </div>
-                <button onclick="togglePause()" class="text-yellow-400 text-2xl">⏸</button>
-            </div>
-
-            <!-- AI実況 -->
-            <div class="bg-white/10 p-2.5 rounded-xl text-xs font-bold flex items-center gap-2 border border-white/10">
-                <span>🤖</span>
-                <span id="ai-message">AI実況「スタート！」</span>
-            </div>
-
-            <!-- 敵・漢字表示エリア -->
-            <div id="enemy-box" class="relative bg-white/5 border-2 border-yellow-500/50 rounded-2xl h-44 flex flex-col items-center justify-center overflow-hidden transition-all duration-300">
-                <div id="boss-badge" class="absolute top-2 text-xs font-black bg-red-600 text-white px-2 py-0.5 rounded-full hidden">⚠️ BOSS ⚠️</div>
-                <div id="enemy-emoji" class="text-5xl mb-1">👾</div>
-                <div id="kanji-text" class="text-6xl font-black text-white drop-shadow-[0_5px_5px_rgba(0,0,0,0.8)]">川</div>
-            </div>
-
-            <!-- 回答入力欄 -->
-            <div class="space-y-2">
-                <input type="text" id="answer-input" placeholder="ひらがなで入力してください" autocomplete="off"
-                    class="w-full h-14 bg-white text-black font-black text-xl text-center rounded-xl shadow-inner focus:outline-none focus:ring-4 focus:ring-blue-500">
-                <button onclick="submitAnswer()" class="w-full h-12 bg-blue-600 hover:bg-blue-500 font-black text-lg rounded-xl shadow-lg transition active:scale-95">
-                    決定する ➔
-                </button>
-            </div>
-
-            <!-- 自作五十音キーボード -->
-            <div id="keyboard-container" class="bg-black/60 p-2 rounded-xl border border-white/10 space-y-1">
-                <!-- キーボードボタンはJSで生成 -->
+                <div class="key-row" style="margin-top: 4px;">
+                    <button class="key-btn" style="background:#d97706;" onclick="addDakuten()">濁点 ”</button>
+                    <button class="key-btn" style="background:#d97706;" onclick="addHandakuten()">半濁点 ゜</button>
+                    <button class="key-btn" style="background:#dc2626;" onclick="delKey()">消去</button>
+                    <button class="key-btn" style="background:#2563eb; flex: 1.5;" onclick="submitAnswer()">決定</button>
+                </div>
             </div>
         </div>
 
-        <!-- 4. ゲームオーバー画面 -->
-        <div id="screen-gameover" class="hidden text-center space-y-6 w-full">
-            <h2 class="text-5xl font-black text-red-500 tracking-wider">GAME OVER</h2>
-            <p class="text-gray-300 font-bold" id="gameover-stats">突破数: 0 / 10</p>
-            <div class="space-y-3">
-                <button onclick="restartSameMode()" class="w-full h-14 bg-yellow-500 hover:bg-yellow-400 text-black font-black text-lg rounded-xl shadow-lg">
-                    新しい問題で再挑戦 🔄
-                </button>
-                <button onclick="goToTitle()" class="w-full h-14 bg-gray-700 hover:bg-gray-600 font-black text-lg rounded-xl">
-                    モード選択に戻る
-                </button>
+        <!-- 4. 解説モーダル -->
+        <div id="modal-explanation" class="modal hidden">
+            <div class="modal-content">
+                <h2 id="modal-title" style="color: #facc15; font-size: 26px; margin-bottom: 5px;">🎉 正解！</h2>
+                <div id="modal-kanji" style="font-size: 50px; font-weight: bold; margin: 10px 0;">漢字</div>
+                <div id="modal-reading" style="font-size: 18px; color: #4ade80; font-weight: bold; margin-bottom: 10px;">読み</div>
+                <div style="background: rgba(255,255,255,0.08); padding: 12px; border-radius: 10px; text-align: left; font-size: 14px; margin-bottom: 15px;">
+                    <div style="font-size: 11px; color: #94a3b8; font-weight: bold;">【意味・解説】</div>
+                    <div id="modal-meaning" style="margin-top: 4px;">解説文</div>
+                </div>
+                <button class="btn" onclick="nextStage()">次のステージへ ➔</button>
             </div>
         </div>
 
-        <!-- 5. クリア画面 -->
-        <div id="screen-cleared" class="hidden text-center space-y-6 w-full">
-            <h2 class="text-4xl font-black text-yellow-400">🏆 全エリア制覇！ 🏆</h2>
-            <p class="text-cyan-300 font-bold">ステージ完全クリアおめでとうございます！</p>
-            <div class="space-y-3">
-                <button onclick="restartSameMode()" class="w-full h-14 bg-green-600 hover:bg-green-500 font-black text-lg rounded-xl shadow-lg">
-                    さらに別の問題で遊ぶ ➔
-                </button>
-                <button onclick="goToTitle()" class="w-full h-14 bg-gray-700 hover:bg-gray-600 font-black text-lg rounded-xl">
-                    モード選択に戻る
-                </button>
+        <!-- 5. 設定モーダル -->
+        <div id="modal-settings" class="modal hidden">
+            <div class="modal-content" style="background: #0f172a; border-color: #38bdf8; text-align: left;">
+                <h2 style="color: #38bdf8; font-size: 22px; margin-bottom: 15px; text-align: center;">⚙️ ゲーム設定</h2>
+                
+                <div style="margin-bottom: 15px;">
+                    <label style="font-size: 12px; color: #94a3b8; font-weight: bold;">入力方式の選択：</label>
+                    <select id="settings-input-mode" onchange="changeInputMode(this.value)" style="margin-top: 5px;">
+                        <option value="keyboard">五十音キーボード</option>
+                        <option value="flick">iOS標準キーボード（フリック等）</option>
+                    </select>
+                </div>
+
+                <div style="margin-bottom: 15px;">
+                    <label style="font-size: 12px; color: #94a3b8; font-weight: bold;">Groq APIキー：</label>
+                    <input type="password" id="api-key-input" placeholder="gsk_..." style="margin-top: 5px; font-size: 14px; text-align: left; padding: 10px;">
+                </div>
+
+                <div style="margin-bottom: 20px;">
+                    <label style="font-size: 12px; color: #94a3b8; font-weight: bold;">効果音・BGM音量: <span id="volume-val">50</span>%</label>
+                    <input type="range" id="volume-slider" min="0" max="100" value="50" oninput="updateVolume(this.value)" style="margin-top: 5px; width: 100%; cursor: pointer;">
+                </div>
+
+                <div style="display: flex; gap: 8px;">
+                    <button class="btn" style="background: #22c55e; flex: 1;" onclick="saveSettings()">設定を保存して戻る</button>
+                </div>
             </div>
         </div>
-    </main>
 
-    <!-- 解説ポップアップモーダル -->
-    <div id="modal-explanation" class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
-        <div class="bg-indigo-950 border border-indigo-500/50 p-6 rounded-2xl max-w-sm w-full space-y-4 text-center shadow-2xl">
-            <h3 class="text-3xl font-black text-yellow-400" id="modal-title">🎉 撃破！</h3>
-            <div class="text-5xl font-black text-white" id="modal-kanji">漢字</div>
-            <div class="text-xl font-bold text-green-400" id="modal-reading">読み</div>
-            <div class="bg-white/10 p-3 rounded-xl text-left text-sm space-y-1">
-                <div class="text-xs font-bold text-gray-400">【解説・意味】</div>
-                <div id="modal-meaning" class="text-white">解説文がここに入ります。</div>
-            </div>
-            <button onclick="nextStage()" class="w-full h-12 bg-yellow-400 hover:bg-yellow-300 text-black font-black rounded-xl shadow-lg">
-                次のエリアへ進む ➔
-            </button>
+        <!-- 6. ゲームオーバー画面 -->
+        <div id="screen-gameover" class="hidden" style="width: 100%;">
+            <h2 style="font-size: 38px; color: #ef4444; margin-bottom: 5px;">GAME OVER</h2>
+            <p id="gameover-stats" style="color: #94a3b8; margin-bottom: 20px;">ライフが尽きました...</p>
+            <button class="btn" style="background: #eab308; color: black;" onclick="startGame(activeMode)">新しい問題で再挑戦 🔄</button>
+            <button class="btn" style="background: #475569;" onclick="goToTitle()">メニューに戻る</button>
+        </div>
+
+        <!-- 7. クリア画面 -->
+        <div id="screen-clear" class="hidden" style="width: 100%;">
+            <h2 style="font-size: 34px; color: #facc15; margin-bottom: 10px;">🏆 全ステージ制覇！ 🏆</h2>
+            <p style="color: #38bdf8; margin-bottom: 20px;">おめでとうございます！</p>
+            <button class="btn" style="background: #22c55e;" onclick="startGame(activeMode)">もう一度遊ぶ</button>
+            <button class="btn" style="background: #475569;" onclick="goToTitle()">メニューに戻る</button>
         </div>
     </div>
 
-    <!-- 一時停止モーダル -->
-    <div id="modal-pause" class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
-        <div class="bg-slate-900 border border-white/20 p-6 rounded-2xl max-w-sm w-full space-y-4 text-center">
-            <h3 class="text-3xl font-black text-yellow-400">⏸ PAUSE</h3>
-            <button onclick="togglePause()" class="w-full h-12 bg-blue-600 font-bold rounded-xl">ゲームに戻る</button>
-            <button onclick="goToTitle(); togglePause();" class="w-full h-12 bg-red-600 font-bold rounded-xl">メニューに戻る</button>
-        </div>
-    </div>
-
-    <!-- 設定画面モーダル -->
-    <div id="modal-settings" class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
-        <div class="bg-slate-900 border border-white/20 p-6 rounded-2xl max-w-md w-full space-y-4">
-            <h3 class="text-xl font-black text-yellow-400">⚙️ Groq API 設定</h3>
-            <p class="text-xs text-gray-400">Groq Console (console.groq.com) で無料取得できるAPIキーを入力してください。</p>
-            <input type="password" id="api-key-input" placeholder="gsk_..." class="w-full p-3 bg-black/50 border border-white/20 rounded-xl text-white font-mono text-sm focus:outline-none focus:border-yellow-400">
-            <div id="auth-status" class="text-xs font-bold"></div>
-            <div class="flex gap-2 pt-2">
-                <button onclick="testApiKey()" class="flex-1 h-10 bg-gray-700 hover:bg-gray-600 text-xs font-bold rounded-xl">キーをテスト</button>
-                <button onclick="saveSettings()" class="flex-1 h-10 bg-blue-600 hover:bg-blue-500 text-xs font-bold rounded-xl">保存して閉じる</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- JavaScript ロジック -->
     <script>
-        // ゲーム状態変数
-        let apiKey = localStorage.getItem("groq_api_key") || "";
-        let selectedMode = "小学生";
-        let questions = [];
+        // ⭐ APIキー（内蔵またはローカルストレージ）
+        const HARDCODED_API_KEY = "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";
+        let apiKey = localStorage.getItem("groq_api_key") || HARDCODED_API_KEY;
+
+        // ⭐ Web Audio API & BGMエンジン
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        let soundVolume = 0.5;
+        let bgmInterval = null;
+
+        function updateVolume(val) {
+            soundVolume = val / 100;
+            document.getElementById("volume-val").innerText = val;
+            playSound('click');
+        }
+
+        // コース選択＆ゲーム中常時鳴るBGMシーケンサー
+        function startBGM() {
+            stopBGM();
+            let noteIndex = 0;
+            const melody = [261.63, 329.63, 392.00, 523.25, 392.00, 329.63]; // 楽しいアルペジオ
+            bgmInterval = setInterval(() => {
+                if (soundVolume <= 0) return;
+                if (audioCtx.state === 'suspended') { audioCtx.resume(); }
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                const now = audioCtx.currentTime;
+                
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(melody[noteIndex], now);
+                gain.gain.setValueAtTime(0.03 * soundVolume, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+                osc.start(now);
+                osc.stop(now + 0.2);
+
+                noteIndex = (noteIndex + 1) % melody.length;
+            }, 300);
+        }
+
+        function stopBGM() {
+            if (bgmInterval) {
+                clearInterval(bgmInterval);
+                bgmInterval = null;
+            }
+        }
+
+        function playSound(type) {
+            if (soundVolume <= 0) return;
+            if (audioCtx.state === 'suspended') { audioCtx.resume(); }
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            const now = audioCtx.currentTime;
+            let baseVolume = 0.2 * soundVolume;
+
+            if (type === 'click') {
+                osc.type = 'sine'; osc.frequency.setValueAtTime(600, now);
+                gain.gain.setValueAtTime(baseVolume, now); gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+                osc.start(now); osc.stop(now + 0.05);
+            } else if (type === 'correct') {
+                osc.type = 'triangle'; osc.frequency.setValueAtTime(523.25, now); osc.frequency.setValueAtTime(659.25, now + 0.1);
+                gain.gain.setValueAtTime(baseVolume * 1.2, now); gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+                osc.start(now); osc.stop(now + 0.3);
+            } else if (type === 'wrong') {
+                osc.type = 'sawtooth'; osc.frequency.setValueAtTime(150, now); osc.frequency.setValueAtTime(110, now + 0.15);
+                gain.gain.setValueAtTime(baseVolume * 1.5, now); gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+                osc.start(now); osc.stop(now + 0.4);
+            } else if (type === 'boss') {
+                osc.type = 'square'; osc.frequency.setValueAtTime(440, now); osc.frequency.setValueAtTime(880, now + 0.2);
+                gain.gain.setValueAtTime(baseVolume, now); gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+                osc.start(now); osc.stop(now + 0.4);
+            }
+        }
+
+        // ⭐ 起動時・メニューに戻った時に裏でAPI認証を確認
+        window.onload = async () => {
+            document.getElementById("api-key-input").value = apiKey;
+            document.getElementById("volume-slider").value = soundVolume * 100;
+            changeInputMode(inputMode);
+            startBGM(); // 音楽スタート
+            checkApiAuthQuietly();
+        };
+
+        async function checkApiAuthQuietly() {
+            const dot = document.getElementById("api-status-dot");
+            const text = document.getElementById("ai-status-text");
+            if (!apiKey) {
+                dot.className = "status-dot dot-red";
+                text.innerText = "APIキー未設定（内蔵データモード）";
+                return;
+            }
+            try {
+                const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` },
+                    body: JSON.stringify({ model: "llama-3.3-70b-versatile", messages: [{ role: "user", content: "test" }], max_tokens: 2 })
+                });
+                if (res.ok) {
+                    dot.className = "status-dot dot-green";
+                    text.innerText = "Groq AI接続完了（AI出題モード稼働中）";
+                } else {
+                    dot.className = "status-dot dot-red";
+                    text.innerText = "APIキー無効（内蔵データモード）";
+                }
+            } catch (e) {
+                dot.className = "status-dot dot-red";
+                text.innerText = "通信エラー（内蔵データモード）";
+            }
+        }
+
+        const fallbackDb = {
+            "小学生": [
+                { kanji: "川", reading: "かわ", category: "小学生", meaning: "水が自然に流れる水路。", isBoss: false },
+                { kanji: "花", reading: "はな", category: "小学生", meaning: "植物の美しい部分。", isBoss: false },
+                { kanji: "学校", reading: "がっこう", category: "小学生", meaning: "勉強を教え、学ぶ場所。", isBoss: false },
+                { kanji: "太陽", reading: "たいよう", category: "小学生", meaning: "地球に光と熱を与える星。", isBoss: false },
+                { kanji: "漢字", reading: "かんじ", category: "小学生【BOSS】", meaning: "古代中国で生まれた文字。", isBoss: true }
+            ],
+            "中学生": [
+                { kanji: "挨拶", reading: "あいさつ", category: "中学生", meaning: "出会いや別れの際の礼儀的な言葉。", isBoss: false },
+                { kanji: "笑顔", reading: "えがお", category: "中学生", meaning: "にこにこと笑った顔。", isBoss: false },
+                { kanji: "複雑", reading: "ふくざつ", category: "中学生", meaning: "仕組みや事柄が絡み合っていて難しいこと。", isBoss: false },
+                { kanji: "故郷", reading: "ふるさと", category: "中学生", meaning: "自分が生まれ育った土地。", isBoss: false },
+                { kanji: "憂鬱", reading: "ゆううつ", category: "中学生【BOSS】", meaning: "気持ちがふさいで暗くなること。", isBoss: true }
+            ],
+            "高校生": [
+                { kanji: "躊躇", reading: "ちゅうちょ", category: "高校生", meaning: "あれこれ迷って決心がつかないこと。", isBoss: false },
+                { kanji: "矛盾", reading: "むじゅん", category: "高校生", meaning: "つじつまが合わないこと。", isBoss: false },
+                { kanji: "隠蔽", reading: "いんぺい", category: "高校生", meaning: "都合の悪い事実を隠し覆うこと。", isBoss: false },
+                { kanji: "明瞭", reading: "めいりょう", category: "高校生", meaning: "はっきりしていて見分けやすいこと。", isBoss: false },
+                { kanji: "薔薇", reading: "ばら", category: "高校生【BOSS】", meaning: "トゲを持つ美しい花植物。", isBoss: true }
+            ],
+            "一般常識": [
+                { kanji: "醤油", reading: "しょうゆ", category: "一般常識", meaning: "大豆などを発酵させて作る調味料。", isBoss: false },
+                { kanji: "咀嚼", reading: "そしゃく", category: "一般常識", meaning: "食べ物をよく噛み砕いて味わうこと。", isBoss: false },
+                { kanji: "流石", reading: "さすが", category: "一般常識", meaning: "評判どおり感心させられる様子。", isBoss: false },
+                { kanji: "贔屓", reading: "ひいき", category: "一般常識", meaning: "自分の気に入った人を特に応援すること。", isBoss: false },
+                { kanji: "胡椒", reading: "こしょう", category: "一般常識【BOSS】", meaning: "ピリッとした辛味のあるスパイス調味料。", isBoss: true }
+            ],
+            "漢字王": [
+                { kanji: "心許ない", reading: "こころもとない", category: "漢字王", meaning: "頼りなくて不安である様子。", isBoss: false },
+                { kanji: "暫く", reading: "しばらく", category: "漢字王", meaning: "少しの間の短い時間。", isBoss: false },
+                { kanji: "穿つ", reading: "うがつ", category: "漢字王", meaning: "穴をあける。物事の本質を鋭く捉えること。", isBoss: false },
+                { kanji: "喧噪", reading: "けんそう", category: "漢字王", meaning: "騒がしく、うるさいこと。", isBoss: false },
+                { kanji: "魑魅魍魎", reading: "ちみもうりょう", category: "漢字王【FINAL BOSS】", meaning: "山林の精気から生じる様々なバケモノ妖怪の総称。", isBoss: true }
+            ]
+        };
+
+        let currentList = [];
         let currentIndex = 0;
         let lives = 3;
         let timer = null;
         let timeRemaining = 30;
         let isPaused = false;
+        let activeMode = "小学生";
+        let inputMode = "keyboard";
 
-        const modes = [
-            { name: "小学生", icon: "🎒", prompt: "小学1〜6年生で習う基本的な漢字。簡単で分かりやすいもの。" },
-            { name: "中学生", icon: "✏️", prompt: "中学校で習う漢字。日常会話や教科書レベル。" },
-            { name: "高校生", icon: "🏫", prompt: "高校で習う漢字や熟語。少し難しい読みや常用漢字。" },
-            { name: "大学生", icon: "🎓", prompt: "大学生・一般レベルの高度な熟語。" },
-            { name: "一般常識", icon: "💼", prompt: "社会人常識・グルメ・生活漢字。" },
-            { name: "漢字王", icon: "👑", prompt: "漢字王・超難問・四字熟語や難読漢字。" },
-            { name: "全レベルMIX", icon: "🌀", prompt: "小学生から漢字王までランダムに混ざった難易度。" }
-        ];
-
-        // キーボード行データ
-        const keyboardRows = [
-            ["あ", "い", "う", "え", "お"],
-            ["か", "き", "く", "け", "こ"],
-            ["さ", "し", "す", "せ", "そ"],
-            ["た", "ち", "つ", "て", "と"],
-            ["な", "に", "ぬ", "ね", "の"],
-            ["は", "ひ", "ふ", "へ", "ほ"],
-            ["ま", "み", "む", "め", "も"],
-            ["や", "ゆ", "よ", "っ", "ん"],
-            ["ら", "り", "る", "れ", "ろ"],
-            ["わ", "”", "゜", "小", "消"]
-        ];
-
-        // 初期化
-        window.onload = () => {
-            renderModeButtons();
-            renderKeyboard();
-            document.getElementById("api-key-input").value = apiKey;
-            if(!apiKey) openSettings();
-        };
-
-        function renderModeButtons() {
-            const container = document.getElementById("mode-buttons");
-            container.innerHTML = modes.map(m => `
-                <button onclick="startCourse('${m.name}')" class="w-full p-4 bg-white/10 hover:bg-white/20 border border-yellow-500/30 rounded-xl font-bold flex items-center justify-between transition active:scale-95 shadow-lg">
-                    <span class="text-xl">${m.icon} ${m.name}コース</span>
-                    <span class="text-yellow-400">➔</span>
-                </button>
-            `).join('');
-        }
-
-        function renderKeyboard() {
-            const container = document.getElementById("keyboard-container");
-            container.innerHTML = keyboardRows.map(row => `
-                <div class="flex gap-1 justify-center">
-                    ${row.map(key => `
-                        <button onclick="handleKey('${key}')" class="flex-1 h-10 bg-slate-800 hover:bg-slate-700 font-bold text-sm rounded transition active:scale-90 text-white shadow">
-                            ${key}
-                        </button>
-                    `).join('')}
-                </div>
-            `).join('');
-        }
-
-        function handleKey(key) {
-            const input = document.getElementById("answer-input");
-            if (key === "消") {
-                input.value = input.value.slice(0, -1);
-            } else if (key === "”") {
-                input.value = addDakuten(input.value);
-            } else if (key === "゜") {
-                input.value = addHandakuten(input.value);
+        function changeInputMode(mode) {
+            inputMode = mode;
+            document.getElementById("settings-input-mode").value = mode;
+            const customKey = document.getElementById("custom-keyboard");
+            const flickBtn = document.getElementById("flick-submit-btn");
+            const inputField = document.getElementById("user-input");
+            
+            if (inputMode === "flick") {
+                customKey.classList.add("hidden");
+                flickBtn.classList.remove("hidden");
+                inputField.readOnly = false;
+                inputField.placeholder = "ここをタップして入力";
             } else {
-                input.value += key;
+                customKey.classList.remove("hidden");
+                flickBtn.classList.add("hidden");
+                inputField.readOnly = true;
+                inputField.placeholder = "ひらがなで入力";
             }
-            input.focus();
         }
 
-        function addDakuten(str) {
-            if(!str) return str;
-            const last = str.slice(-1);
-            const map = { "か":"が","き":"ぎ","く":"ぐ","け":"げ","こ":"ご","さ":"ざ","し":"じ","す":"ず","せ":"ぜ","そ":"ぞ","た":"だ","ち":"ぢ","つ":"づ","て":"で","と":"ど","は":"ば","ひ":"び","ふ":"ぶ","へ":"べ","ほ":"ぼ","う":"ゔ" };
-            return map[last] ? str.slice(0, -1) + map[last] : str;
-        }
-        function addHandakuten(str) {
-            if(!str) return str;
-            const last = str.slice(-1);
-            const map = { "は":"ぱ","ひ":"ぴ","ふ":"ぷ","へ":"ぺ","ほ":"ぽ" };
-            return map[last] ? str.slice(0, -1) + map[last] : str;
-        }
+        // ⭐ コース選択時にAIが難易度に応じた問題を自動生成する処理
+        async function startGame(mode) {
+            playSound('click');
+            activeMode = mode;
+            currentIndex = 0;
+            lives = 3;
+            
+            document.getElementById("screen-title").classList.add("hidden");
+            document.getElementById("screen-gameover").classList.add("hidden");
+            document.getElementById("screen-clear").classList.add("hidden");
+            document.getElementById("screen-loading").classList.remove("hidden");
 
-        // 画面遷移
-        function switchScreen(screenId) {
-            ["screen-title", "screen-loading", "screen-game", "screen-gameover", "screen-cleared"].forEach(id => {
-                document.getElementById(id).classList.add("hidden");
-            });
-            document.getElementById(screenId).classList.remove("hidden");
-        }
+            if (apiKey) {
+                try {
+                    const prompt = `あなたは漢字ゲームの出題AIです。「${mode}」の難易度に適した漢字クイズを合計5問、JSON形式の配列のみで作成してください。\n【条件】\n- 5問を作成（idは1から5）。\n- 5問目はisBossをtrueにし、categoryの末尾に【BOSS】をつけてください。\n- readingは必ずひらがな。\n- meaningは分かりやすい解説文。\n- マークダウン（\`\`\`json など）は一切含めず純粋なJSON配列文字列のみを出力してください。\n[{"id":1,"kanji":"林檎","reading":"りんご","category":"${mode}","meaning":"赤い果実。","isBoss":false}]`;
 
-        // コース開始 & AI生成
-        async function startCourse(modeName) {
-            selectedMode = modeName;
-            if (!apiKey) {
-                openSettings();
-                return;
-            }
-
-            switchScreen("screen-loading");
-            document.getElementById("loading-text").innerText = `Groq AIが「${modeName}」のクイズ10問を構築中...`;
-
-            const modeObj = modes.find(m => m.name === modeName);
-            const prompt = `あなたは漢字ゲームの出題AIです。「${modeName}」の難易度で漢字クイズを合計10問、JSON形式の配列のみで作成してください。\n【難易度要件】\n${modeObj.prompt}\n【条件】\n- 10問を作成（idは1から10）。\n- 5問目と10問目はisBossをtrueにし、categoryの末尾に【BOSS】をつけてください。\n- readingは必ずひらがな。\n- meaningは解説文。\n- マークダウン（\`\`\`json など）は一切含めず純粋なJSON配列文字列のみを出力してください。\n[{"id":1,"kanji":"林檎","reading":"りんご","category":"${modeName}","meaning":"赤い果実。","isBoss":false}]`;
-
-            try {
-                const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` },
-                    body: JSON.stringify({
-                        model: "llama-3.3-70b-versatile",
-                        messages: [{ role: "user", content: prompt }],
-                        temperature: 0.9
-                    })
-                });
-                const data = await res.json();
-                let jsonText = data.choices[0].message.content.trim();
-                if (jsonText.startsWith("
+                    const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` },
+                        body: JSON.stringify({
+                            model: "llama-3.3-70b-versatile",
+                            messages: [{ role: "user", content: prompt }],
+                            temperature: 0.9
+                        })
+                    });
+                    if (res.ok) {
+                        const data = await res.json();
+                        let jsonText = data.choices[0].message.content.trim();
+                        if (jsonText.startsWith("
 
 							<script>
                             	
