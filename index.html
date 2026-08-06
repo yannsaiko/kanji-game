@@ -1,0 +1,326 @@
+
+                        <!DOCTYPE html>
+                        <html lang="en">
+                        <head>
+                            <meta charset="UTF-8">
+                            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+							<style>
+								body {
+									background-color: white; /* Ensure the iframe has a white background */
+								}
+
+								
+							</style>
+                        </head>
+                        <body>
+                            <!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ネプリーグ風 漢字ツアーズ AI（Web版）</title>
+    <!-- Tailwind CSS CDN for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @keyframes shake {
+            0% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            50% { transform: translateX(10px); }
+            75% { transform: translateX(-10px); }
+            100% { transform: translateX(0); }
+        }
+        .animate-shake { animation: shake 0.3s ease-in-out; }
+        @keyframes pulse-red {
+            0%, 100% { transform: scale(1); opacity: 0.4; }
+            50% { transform: scale(1.15); opacity: 0.8; }
+        .animate-pulse-red { animation: pulse-red 1s infinite; }
+    </style>
+</head>
+<body class="bg-slate-950 text-white font-sans select-none min-h-screen flex flex-col justify-between overflow-x-hidden">
+
+    <!-- ヘッダー / 設定ボタン -->
+    <header class="p-4 flex justify-between items-center bg-black/40 backdrop-blur border-b border-white/10">
+        <h1 class="font-black text-yellow-400 tracking-widest text-lg">漢字ツアーズ AI</h1>
+        <button onclick="openSettings()" class="bg-white/10 hover:bg-white/20 px-3 py-1 rounded-full text-sm font-bold flex items-center gap-1">
+            ⚙️ 設定 / APIキー
+        </button>
+    </header>
+
+    <!-- メイン画面コンテナ -->
+    <main class="flex-1 flex flex-col items-center justify-center p-4 max-w-lg mx-auto w-full">
+
+        <!-- 1. タイトル画面 -->
+        <div id="screen-title" class="w-full text-center space-y-6">
+            <div class="space-y-2">
+                <span class="text-xs tracking-widest font-bold text-yellow-400 uppercase">ネプリーグ風 漢字ゲーム</span>
+                <h2 class="text-4xl font-black drop-shadow-lg text-white">漢字ツアーズ AI</h2>
+            </div>
+            
+            <div class="bg-cyan-950/50 border border-cyan-500/30 p-3 rounded-xl text-sm text-cyan-200 font-bold">
+                🤖 AI実況「遊たい難易度コースを選択してください！」
+            </div>
+
+            <div class="space-y-3" id="mode-buttons">
+                <!-- モードボタンはJSで動的生成 -->
+            </div>
+        </div>
+
+        <!-- 2. ローディング画面 -->
+        <div id="screen-loading" class="hidden text-center space-y-6 w-full">
+            <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-yellow-400 mx-auto"></div>
+            <div class="space-y-2">
+                <h3 class="text-xl font-bold text-yellow-400">⚡️ Groq超高速AIが問題を構築中...</h3>
+                <p class="text-sm text-gray-400" id="loading-text">AIがオリジナル漢字クイズを作成しています。</p>
+            </div>
+        </div>
+
+        <!-- 3. ゲームプレイ画面 -->
+        <div id="screen-game" class="hidden w-full space-y-4">
+            <!-- ステージ & ライフ & タイマー -->
+            <div class="flex justify-between items-center bg-black/50 p-3 rounded-xl border border-white/10">
+                <div>
+                    <div class="text-xs font-bold text-yellow-400" id="stage-text">STAGE 1 / 10</div>
+                    <div class="text-sm font-black text-cyan-300" id="category-text">【小学生】</div>
+                </div>
+                <div class="flex gap-1 text-red-500 text-lg" id="lives-container">
+                    ❤️❤️❤️
+                </div>
+                <div class="flex items-center gap-1 bg-red-950/60 border border-red-500/40 px-3 py-1 rounded-lg">
+                    <span class="text-red-400 text-sm">⏱</span>
+                    <span class="font-black text-lg text-white" id="timer-text">30</span>
+                </div>
+                <button onclick="togglePause()" class="text-yellow-400 text-2xl">⏸</button>
+            </div>
+
+            <!-- AI実況 -->
+            <div class="bg-white/10 p-2.5 rounded-xl text-xs font-bold flex items-center gap-2 border border-white/10">
+                <span>🤖</span>
+                <span id="ai-message">AI実況「スタート！」</span>
+            </div>
+
+            <!-- 敵・漢字表示エリア -->
+            <div id="enemy-box" class="relative bg-white/5 border-2 border-yellow-500/50 rounded-2xl h-44 flex flex-col items-center justify-center overflow-hidden transition-all duration-300">
+                <div id="boss-badge" class="absolute top-2 text-xs font-black bg-red-600 text-white px-2 py-0.5 rounded-full hidden">⚠️ BOSS ⚠️</div>
+                <div id="enemy-emoji" class="text-5xl mb-1">👾</div>
+                <div id="kanji-text" class="text-6xl font-black text-white drop-shadow-[0_5px_5px_rgba(0,0,0,0.8)]">川</div>
+            </div>
+
+            <!-- 回答入力欄 -->
+            <div class="space-y-2">
+                <input type="text" id="answer-input" placeholder="ひらがなで入力してください" autocomplete="off"
+                    class="w-full h-14 bg-white text-black font-black text-xl text-center rounded-xl shadow-inner focus:outline-none focus:ring-4 focus:ring-blue-500">
+                <button onclick="submitAnswer()" class="w-full h-12 bg-blue-600 hover:bg-blue-500 font-black text-lg rounded-xl shadow-lg transition active:scale-95">
+                    決定する ➔
+                </button>
+            </div>
+
+            <!-- 自作五十音キーボード -->
+            <div id="keyboard-container" class="bg-black/60 p-2 rounded-xl border border-white/10 space-y-1">
+                <!-- キーボードボタンはJSで生成 -->
+            </div>
+        </div>
+
+        <!-- 4. ゲームオーバー画面 -->
+        <div id="screen-gameover" class="hidden text-center space-y-6 w-full">
+            <h2 class="text-5xl font-black text-red-500 tracking-wider">GAME OVER</h2>
+            <p class="text-gray-300 font-bold" id="gameover-stats">突破数: 0 / 10</p>
+            <div class="space-y-3">
+                <button onclick="restartSameMode()" class="w-full h-14 bg-yellow-500 hover:bg-yellow-400 text-black font-black text-lg rounded-xl shadow-lg">
+                    新しい問題で再挑戦 🔄
+                </button>
+                <button onclick="goToTitle()" class="w-full h-14 bg-gray-700 hover:bg-gray-600 font-black text-lg rounded-xl">
+                    モード選択に戻る
+                </button>
+            </div>
+        </div>
+
+        <!-- 5. クリア画面 -->
+        <div id="screen-cleared" class="hidden text-center space-y-6 w-full">
+            <h2 class="text-4xl font-black text-yellow-400">🏆 全エリア制覇！ 🏆</h2>
+            <p class="text-cyan-300 font-bold">ステージ完全クリアおめでとうございます！</p>
+            <div class="space-y-3">
+                <button onclick="restartSameMode()" class="w-full h-14 bg-green-600 hover:bg-green-500 font-black text-lg rounded-xl shadow-lg">
+                    さらに別の問題で遊ぶ ➔
+                </button>
+                <button onclick="goToTitle()" class="w-full h-14 bg-gray-700 hover:bg-gray-600 font-black text-lg rounded-xl">
+                    モード選択に戻る
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <!-- 解説ポップアップモーダル -->
+    <div id="modal-explanation" class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
+        <div class="bg-indigo-950 border border-indigo-500/50 p-6 rounded-2xl max-w-sm w-full space-y-4 text-center shadow-2xl">
+            <h3 class="text-3xl font-black text-yellow-400" id="modal-title">🎉 撃破！</h3>
+            <div class="text-5xl font-black text-white" id="modal-kanji">漢字</div>
+            <div class="text-xl font-bold text-green-400" id="modal-reading">読み</div>
+            <div class="bg-white/10 p-3 rounded-xl text-left text-sm space-y-1">
+                <div class="text-xs font-bold text-gray-400">【解説・意味】</div>
+                <div id="modal-meaning" class="text-white">解説文がここに入ります。</div>
+            </div>
+            <button onclick="nextStage()" class="w-full h-12 bg-yellow-400 hover:bg-yellow-300 text-black font-black rounded-xl shadow-lg">
+                次のエリアへ進む ➔
+            </button>
+        </div>
+    </div>
+
+    <!-- 一時停止モーダル -->
+    <div id="modal-pause" class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
+        <div class="bg-slate-900 border border-white/20 p-6 rounded-2xl max-w-sm w-full space-y-4 text-center">
+            <h3 class="text-3xl font-black text-yellow-400">⏸ PAUSE</h3>
+            <button onclick="togglePause()" class="w-full h-12 bg-blue-600 font-bold rounded-xl">ゲームに戻る</button>
+            <button onclick="goToTitle(); togglePause();" class="w-full h-12 bg-red-600 font-bold rounded-xl">メニューに戻る</button>
+        </div>
+    </div>
+
+    <!-- 設定画面モーダル -->
+    <div id="modal-settings" class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
+        <div class="bg-slate-900 border border-white/20 p-6 rounded-2xl max-w-md w-full space-y-4">
+            <h3 class="text-xl font-black text-yellow-400">⚙️ Groq API 設定</h3>
+            <p class="text-xs text-gray-400">Groq Console (console.groq.com) で無料取得できるAPIキーを入力してください。</p>
+            <input type="password" id="api-key-input" placeholder="gsk_..." class="w-full p-3 bg-black/50 border border-white/20 rounded-xl text-white font-mono text-sm focus:outline-none focus:border-yellow-400">
+            <div id="auth-status" class="text-xs font-bold"></div>
+            <div class="flex gap-2 pt-2">
+                <button onclick="testApiKey()" class="flex-1 h-10 bg-gray-700 hover:bg-gray-600 text-xs font-bold rounded-xl">キーをテスト</button>
+                <button onclick="saveSettings()" class="flex-1 h-10 bg-blue-600 hover:bg-blue-500 text-xs font-bold rounded-xl">保存して閉じる</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript ロジック -->
+    <script>
+        // ゲーム状態変数
+        let apiKey = localStorage.getItem("groq_api_key") || "";
+        let selectedMode = "小学生";
+        let questions = [];
+        let currentIndex = 0;
+        let lives = 3;
+        let timer = null;
+        let timeRemaining = 30;
+        let isPaused = false;
+
+        const modes = [
+            { name: "小学生", icon: "🎒", prompt: "小学1〜6年生で習う基本的な漢字。簡単で分かりやすいもの。" },
+            { name: "中学生", icon: "✏️", prompt: "中学校で習う漢字。日常会話や教科書レベル。" },
+            { name: "高校生", icon: "🏫", prompt: "高校で習う漢字や熟語。少し難しい読みや常用漢字。" },
+            { name: "大学生", icon: "🎓", prompt: "大学生・一般レベルの高度な熟語。" },
+            { name: "一般常識", icon: "💼", prompt: "社会人常識・グルメ・生活漢字。" },
+            { name: "漢字王", icon: "👑", prompt: "漢字王・超難問・四字熟語や難読漢字。" },
+            { name: "全レベルMIX", icon: "🌀", prompt: "小学生から漢字王までランダムに混ざった難易度。" }
+        ];
+
+        // キーボード行データ
+        const keyboardRows = [
+            ["あ", "い", "う", "え", "お"],
+            ["か", "き", "く", "け", "こ"],
+            ["さ", "し", "す", "せ", "そ"],
+            ["た", "ち", "つ", "て", "と"],
+            ["な", "に", "ぬ", "ね", "の"],
+            ["は", "ひ", "ふ", "へ", "ほ"],
+            ["ま", "み", "む", "め", "も"],
+            ["や", "ゆ", "よ", "っ", "ん"],
+            ["ら", "り", "る", "れ", "ろ"],
+            ["わ", "”", "゜", "小", "消"]
+        ];
+
+        // 初期化
+        window.onload = () => {
+            renderModeButtons();
+            renderKeyboard();
+            document.getElementById("api-key-input").value = apiKey;
+            if(!apiKey) openSettings();
+        };
+
+        function renderModeButtons() {
+            const container = document.getElementById("mode-buttons");
+            container.innerHTML = modes.map(m => `
+                <button onclick="startCourse('${m.name}')" class="w-full p-4 bg-white/10 hover:bg-white/20 border border-yellow-500/30 rounded-xl font-bold flex items-center justify-between transition active:scale-95 shadow-lg">
+                    <span class="text-xl">${m.icon} ${m.name}コース</span>
+                    <span class="text-yellow-400">➔</span>
+                </button>
+            `).join('');
+        }
+
+        function renderKeyboard() {
+            const container = document.getElementById("keyboard-container");
+            container.innerHTML = keyboardRows.map(row => `
+                <div class="flex gap-1 justify-center">
+                    ${row.map(key => `
+                        <button onclick="handleKey('${key}')" class="flex-1 h-10 bg-slate-800 hover:bg-slate-700 font-bold text-sm rounded transition active:scale-90 text-white shadow">
+                            ${key}
+                        </button>
+                    `).join('')}
+                </div>
+            `).join('');
+        }
+
+        function handleKey(key) {
+            const input = document.getElementById("answer-input");
+            if (key === "消") {
+                input.value = input.value.slice(0, -1);
+            } else if (key === "”") {
+                input.value = addDakuten(input.value);
+            } else if (key === "゜") {
+                input.value = addHandakuten(input.value);
+            } else {
+                input.value += key;
+            }
+            input.focus();
+        }
+
+        function addDakuten(str) {
+            if(!str) return str;
+            const last = str.slice(-1);
+            const map = { "か":"が","き":"ぎ","く":"ぐ","け":"げ","こ":"ご","さ":"ざ","し":"じ","す":"ず","せ":"ぜ","そ":"ぞ","た":"だ","ち":"ぢ","つ":"づ","て":"で","と":"ど","は":"ば","ひ":"び","ふ":"ぶ","へ":"べ","ほ":"ぼ","う":"ゔ" };
+            return map[last] ? str.slice(0, -1) + map[last] : str;
+        }
+        function addHandakuten(str) {
+            if(!str) return str;
+            const last = str.slice(-1);
+            const map = { "は":"ぱ","ひ":"ぴ","ふ":"ぷ","へ":"ぺ","ほ":"ぽ" };
+            return map[last] ? str.slice(0, -1) + map[last] : str;
+        }
+
+        // 画面遷移
+        function switchScreen(screenId) {
+            ["screen-title", "screen-loading", "screen-game", "screen-gameover", "screen-cleared"].forEach(id => {
+                document.getElementById(id).classList.add("hidden");
+            });
+            document.getElementById(screenId).classList.remove("hidden");
+        }
+
+        // コース開始 & AI生成
+        async function startCourse(modeName) {
+            selectedMode = modeName;
+            if (!apiKey) {
+                openSettings();
+                return;
+            }
+
+            switchScreen("screen-loading");
+            document.getElementById("loading-text").innerText = `Groq AIが「${modeName}」のクイズ10問を構築中...`;
+
+            const modeObj = modes.find(m => m.name === modeName);
+            const prompt = `あなたは漢字ゲームの出題AIです。「${modeName}」の難易度で漢字クイズを合計10問、JSON形式の配列のみで作成してください。\n【難易度要件】\n${modeObj.prompt}\n【条件】\n- 10問を作成（idは1から10）。\n- 5問目と10問目はisBossをtrueにし、categoryの末尾に【BOSS】をつけてください。\n- readingは必ずひらがな。\n- meaningは解説文。\n- マークダウン（\`\`\`json など）は一切含めず純粋なJSON配列文字列のみを出力してください。\n[{"id":1,"kanji":"林檎","reading":"りんご","category":"${modeName}","meaning":"赤い果実。","isBoss":false}]`;
+
+            try {
+                const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` },
+                    body: JSON.stringify({
+                        model: "llama-3.3-70b-versatile",
+                        messages: [{ role: "user", content: prompt }],
+                        temperature: 0.9
+                    })
+                });
+                const data = await res.json();
+                let jsonText = data.choices[0].message.content.trim();
+                if (jsonText.startsWith("
+
+							<script>
+                            	
+							</script>
+                        </body>
+                        </html>
+                    
