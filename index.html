@@ -1,4 +1,215 @@
-<script>
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ネプリーグ風 漢字ツアーズ AI</title>
+    <style>
+        * { box-sizing: border-box; }
+        body { 
+            background: #0f172a; 
+            color: white; 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+            margin: 0; padding: 0; 
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            min-height: 100vh; overflow-x: hidden;
+        }
+        .container {
+            width: 100%; max-width: 450px; padding: 15px; text-align: center;
+            display: flex; flex-direction: column; align-items: center;
+        }
+        .hidden { display: none !important; }
+        .btn { 
+            background: #2563eb; color: white; padding: 14px; margin: 6px 0; border: none; border-radius: 12px; 
+            font-size: 18px; font-weight: bold; width: 100%; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+        }
+        .btn:active { transform: scale(0.98); background: #1d4ed8; }
+
+        .key-btn { 
+            background: #334155; color: white; padding: 10px 0; margin: 2px; border: none; border-radius: 6px; 
+            font-size: 15px; font-weight: bold; cursor: pointer; flex: 1; box-shadow: 0 2px 3px rgba(0,0,0,0.2);
+        }
+        .key-btn:active { background: #1e293b; }
+        .key-row { display: flex; width: 100%; justify-content: space-between; margin-bottom: 3px; }
+
+        input, select { 
+            width: 100%; padding: 12px; font-size: 18px; text-align: center; border-radius: 10px; 
+            border: 2px solid #cbd5e1; margin-bottom: 8px; background: white; color: black; font-weight: bold;
+        }
+        
+        .box { 
+            background: #1e293b; border: 3px solid #eab308; border-radius: 16px; padding: 16px; margin: 10px 0; width: 100%; 
+            box-shadow: 0 8px 12px rgba(0, 0, 0, 0.3); position: relative;
+        }
+        .modal {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(5px);
+            display: flex; align-items: center; justify-content: center; padding: 20px; z-index: 50;
+        }
+        .modal-content {
+            background: #1e1b4b; border: 2px solid #6366f1; border-radius: 20px; padding: 24px; width: 100%; max-width: 400px; text-align: center;
+        }
+        @keyframes shake {
+            0% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            50% { transform: translateX(10px); }
+            75% { transform: translateX(-10px); }
+            100% { transform: translateX(0); }
+        }
+        .shake { animation: shake 0.3s ease-in-out; }
+        
+        /* ⭐ 認証インジケーター（緑／赤の点） */
+        .status-dot {
+            width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-left: 6px;
+            box-shadow: 0 0 8px currentColor;
+        }
+        .dot-gray { background-color: #94a3b8; color: #94a3b8; }
+        .dot-green { background-color: #22c55e; color: #22c55e; }
+        .dot-red { background-color: #ef4444; color: #ef4444; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <!-- ヘッダー設定ボタン -->
+        <div style="width: 100%; display: flex; justify-content: flex-end; margin-bottom: 5px;">
+            <button onclick="openSettings()" style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: white; padding: 6px 14px; border-radius: 20px; font-weight: bold; cursor: pointer;">
+                ⚙️ 設定（一時停止）
+            </button>
+        </div>
+
+        <!-- 1. タイトル画面 -->
+        <div id="screen-title" style="width: 100%;">
+            <div style="display: flex; align-items: center; justify-content: center; gap: 4px; margin-bottom: 5px;">
+                <h1 style="font-size: 28px; color: #facc15; margin: 0;">漢字ツアーズ AI</h1>
+                <!-- ⭐ 認証ステータスドット -->
+                <span id="api-status-dot" class="status-dot dot-gray" title="API認証確認中..."></span>
+            </div>
+            <p style="color: #94a3b8; margin-bottom: 20px; font-size: 14px;" id="ai-status-text">AI接続を確認中...</p>
+            
+            <button class="btn" onclick="startGame('小学生')">🎒 小学生コース</button>
+            <button class="btn" onclick="startGame('中学生')">✏️ 中学生コース</button>
+            <button class="btn" onclick="startGame('高校生')">🏫 高校生コース</button>
+            <button class="btn" onclick="startGame('一般常識')">💼 一般常識コース</button>
+            <button class="btn" onclick="startGame('漢字王')">👑 漢字王コース</button>
+        </div>
+
+        <!-- 2. AI生成ローディング画面 -->
+        <div id="screen-loading" class="hidden" style="width: 100%; padding: 40px 0;">
+            <div style="font-size: 40px; margin-bottom: 15px;">🤖⚡️</div>
+            <h2 style="color: #facc15; font-size: 22px; margin-bottom: 10px;">Groq AIが問題を作成中...</h2>
+            <p id="loading-subtext" style="color: #94a3b8; font-size: 13px;">難易度に応じたオリジナルクイズを構築しています。</p>
+        </div>
+
+        <!-- 3. ゲームプレイ画面 -->
+        <div id="screen-game" class="hidden" style="width: 100%;">
+            <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; margin-bottom: 8px;">
+                <div style="text-align: left;">
+                    <div id="stage-text" style="font-size: 12px; font-weight: bold; color: #facc15;">STAGE 1 / 5</div>
+                    <div id="category-text" style="font-size: 13px; font-weight: bold; color: #38bdf8;">【小学生】</div>
+                </div>
+                <div id="lives-container" style="font-size: 18px;">❤️❤️❤️</div>
+                <div style="background: rgba(239, 68, 68, 0.3); border: 1px solid #ef4444; padding: 4px 10px; border-radius: 8px; font-weight: bold;">
+                    ⏱ <span id="timer-text">30</span>秒
+                </div>
+            </div>
+
+            <div style="background: rgba(255,255,255,0.1); padding: 6px 10px; border-radius: 8px; font-size: 12px; font-weight: bold; width: 100%; margin-bottom: 8px; text-align: left;">
+                🤖 <span id="ai-message">AI「バトルスタート！」</span>
+            </div>
+
+            <div class="box" id="enemy-box">
+                <div id="boss-badge" class="hidden" style="position: absolute; top: 8px; right: 12px; background: #dc2626; color: white; font-size: 11px; font-weight: bold; padding: 2px 8px; border-radius: 6px;">⚠️ BOSS</div>
+                <div id="enemy-emoji" style="font-size: 40px; margin-bottom: 2px;">👾</div>
+                <div id="kanji-display" style="font-size: 65px; font-weight: bold; line-height: 1.1;">川</div>
+            </div>
+
+            <input type="text" id="user-input" placeholder="ひらがなを入力">
+
+            <button id="flick-submit-btn" class="btn hidden" style="background: #2563eb; margin-bottom: 8px;" onclick="submitAnswer()">決定する ➔</button>
+            
+            <div id="custom-keyboard" style="width: 100%; background: rgba(0,0,0,0.4); padding: 6px; border-radius: 10px;">
+                <div class="key-row"><button class="key-btn" onclick="addKey('あ')">あ</button><button class="key-btn" onclick="addKey('い')">い</button><button class="key-btn" onclick="addKey('う')">う</button><button class="key-btn" onclick="addKey('え')">え</button><button class="key-btn" onclick="addKey('お')">お</button></div>
+                <div class="key-row"><button class="key-btn" onclick="addKey('か')">か</button><button class="key-btn" onclick="addKey('き')">き</button><button class="key-btn" onclick="addKey('く')">く</button><button class="key-btn" onclick="addKey('け')">け</button><button class="key-btn" onclick="addKey('こ')">こ</button></div>
+                <div class="key-row"><button class="key-btn" onclick="addKey('さ')">さ</button><button class="key-btn" onclick="addKey('し')">し</button><button class="key-btn" onclick="addKey('す')">す</button><button class="key-btn" onclick="addKey('せ')">せ</button><button class="key-btn" onclick="addKey('そ')">そ</button></div>
+                <div class="key-row"><button class="key-btn" onclick="addKey('た')">た</button><button class="key-btn" onclick="addKey('ち')">ち</button><button class="key-btn" onclick="addKey('つ')">つ</button><button class="key-btn" onclick="addKey('て')">て</button><button class="key-btn" onclick="addKey('と')">と</button></div>
+                <div class="key-row"><button class="key-btn" onclick="addKey('な')">な</button><button class="key-btn" onclick="addKey('に')">に</button><button class="key-btn" onclick="addKey('ぬ')">ぬ</button><button class="key-btn" onclick="addKey('ね')">ね</button><button class="key-btn" onclick="addKey('の')">の</button></div>
+                <div class="key-row"><button class="key-btn" onclick="addKey('は')">は</button><button class="key-btn" onclick="addKey('ひ')">ひ</button><button class="key-btn" onclick="addKey('ふ')">ふ</button><button class="key-btn" onclick="addKey('へ')">へ</button><button class="key-btn" onclick="addKey('ほ')">ほ</button></div>
+                <div class="key-row"><button class="key-btn" onclick="addKey('ま')">ま</button><button class="key-btn" onclick="addKey('み')">み</button><button class="key-btn" onclick="addKey('む')">む</button><button class="key-btn" onclick="addKey('め')">め</button><button class="key-btn" onclick="addKey('も')">も</button></div>
+                <div class="key-row"><button class="key-btn" onclick="addKey('や')">や</button><button class="key-btn" style="opacity:0.2;">-</button><button class="key-btn" onclick="addKey('ゆ')">ゆ</button><button class="key-btn" style="opacity:0.2;">-</button><button class="key-btn" onclick="addKey('よ')">よ</button></div>
+                <div class="key-row"><button class="key-btn" onclick="addKey('ら')">ら</button><button class="key-btn" onclick="addKey('り')">り</button><button class="key-btn" onclick="addKey('る')">る</button><button class="key-btn" onclick="addKey('れ')">れ</button><button class="key-btn" onclick="addKey('ろ')">ろ</button></div>
+                <div class="key-row">
+                    <button class="key-btn" onclick="addKey('わ')">わ</button><button class="key-btn" onclick="addKey('を')">を</button><button class="key-btn" onclick="addKey('ん')">ん</button><button class="key-btn" onclick="addKey('っ')">っ</button><button class="key-btn" onclick="addKey('ー')">ー</button>
+                </div>
+                <div class="key-row" style="margin-top: 4px;">
+                    <button class="key-btn" style="background:#d97706;" onclick="addDakuten()">濁点 ”</button>
+                    <button class="key-btn" style="background:#d97706;" onclick="addHandakuten()">半濁点 ゜</button>
+                    <button class="key-btn" style="background:#dc2626;" onclick="delKey()">消去</button>
+                    <button class="key-btn" style="background:#2563eb; flex: 1.5;" onclick="submitAnswer()">決定</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 4. 解説モーダル -->
+        <div id="modal-explanation" class="modal hidden">
+            <div class="modal-content">
+                <h2 id="modal-title" style="color: #facc15; font-size: 26px; margin-bottom: 5px;">🎉 正解！</h2>
+                <div id="modal-kanji" style="font-size: 50px; font-weight: bold; margin: 10px 0;">漢字</div>
+                <div id="modal-reading" style="font-size: 18px; color: #4ade80; font-weight: bold; margin-bottom: 10px;">読み</div>
+                <div style="background: rgba(255,255,255,0.08); padding: 12px; border-radius: 10px; text-align: left; font-size: 14px; margin-bottom: 15px;">
+                    <div style="font-size: 11px; color: #94a3b8; font-weight: bold;">【意味・解説】</div>
+                    <div id="modal-meaning" style="margin-top: 4px;">解説文</div>
+                </div>
+                <button class="btn" onclick="nextStage()">次のステージへ ➔</button>
+            </div>
+        </div>
+
+        <!-- 5. 設定モーダル -->
+        <div id="modal-settings" class="modal hidden">
+            <div class="modal-content" style="background: #0f172a; border-color: #38bdf8; text-align: left;">
+                <h2 style="color: #38bdf8; font-size: 22px; margin-bottom: 15px; text-align: center;">⚙️ ゲーム設定</h2>
+                
+                <div style="margin-bottom: 15px;">
+                    <label style="font-size: 12px; color: #94a3b8; font-weight: bold;">入力方式の選択：</label>
+                    <select id="settings-input-mode" onchange="changeInputMode(this.value)" style="margin-top: 5px;">
+                        <option value="keyboard">五十音キーボード</option>
+                        <option value="flick">iOS標準キーボード（フリック等）</option>
+                    </select>
+                </div>
+
+                <div style="margin-bottom: 15px;">
+                    <label style="font-size: 12px; color: #94a3b8; font-weight: bold;">Groq APIキー：</label>
+                    <input type="password" id="api-key-input" placeholder="gsk_..." style="margin-top: 5px; font-size: 14px; text-align: left; padding: 10px;">
+                </div>
+
+                <div style="margin-bottom: 20px;">
+                    <label style="font-size: 12px; color: #94a3b8; font-weight: bold;">効果音・BGM音量: <span id="volume-val">50</span>%</label>
+                    <input type="range" id="volume-slider" min="0" max="100" value="50" oninput="updateVolume(this.value)" style="margin-top: 5px; width: 100%; cursor: pointer;">
+                </div>
+
+                <div style="display: flex; gap: 8px;">
+                    <button class="btn" style="background: #22c55e; flex: 1;" onclick="saveSettings()">設定を保存して戻る</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 6. ゲームオーバー画面 -->
+        <div id="screen-gameover" class="hidden" style="width: 100%;">
+            <h2 style="font-size: 38px; color: #ef4444; margin-bottom: 5px;">GAME OVER</h2>
+            <p id="gameover-stats" style="color: #94a3b8; margin-bottom: 20px;">ライフが尽きました...</p>
+            <button class="btn" style="background: #eab308; color: black;" onclick="startGame(activeMode)">新しい問題で再挑戦 🔄</button>
+            <button class="btn" style="background: #475569;" onclick="goToTitle()">メニューに戻る</button>
+        </div>
+
+        <!-- 7. クリア画面 -->
+        <div id="screen-clear" class="hidden" style="width: 100%;">
+            <h2 style="font-size: 34px; color: #facc15; margin-bottom: 10px;">🏆 全ステージ制覇！ 🏆</h2>
+            <p style="color: #38bdf8; margin-bottom: 20px;">おめでとうございます！</p>
+            <button class="btn" style="background: #22c55e;" onclick="startGame(activeMode)">もう一度遊ぶ</button>
+            <button class="btn" style="background: #475569;" onclick="goToTitle()">メニューに戻る</button>
+        </div>
+    </div>
+
+    <script>
         // ⭐ APIキー
         const HARDCODED_API_KEY = "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";
         let apiKey = localStorage.getItem("groq_api_key") || HARDCODED_API_KEY;
@@ -213,4 +424,200 @@
                         if (jsonText.includes("```json")) {
                             jsonText = jsonText.split("```json")[1].split("```")[0].trim();
                         } else if (jsonText.includes("```")) {
-                            jsonText = jsonText.split("
+                            jsonText = jsonText.split("```")[1].split("```")[0].trim();
+                        }
+
+                        currentList = JSON.parse(jsonText);
+                        loadedFromAi = true;
+                    }
+                } catch (e) {
+                    console.warn("AI出題に失敗したため、内蔵データを使用します:", e);
+                }
+            }
+
+            if (!loadedFromAi) {
+                currentList = fallbackDb[mode] || fallbackDb["小学生"];
+            }
+
+            document.getElementById("screen-loading").classList.add("hidden");
+            document.getElementById("screen-game").classList.remove("hidden");
+            loadStage();
+        }
+
+        // ⭐ ステージ読み込み
+        function loadStage() {
+            const q = currentList[currentIndex];
+            document.getElementById("stage-text").innerText = `STAGE ${currentIndex + 1} / ${currentList.length}`;
+            document.getElementById("category-text").innerText = `【${q.category}】`;
+            document.getElementById("kanji-display").innerText = q.kanji;
+            document.getElementById("user-input").value = "";
+            updateLivesDisplay();
+
+            const bossBadge = document.getElementById("boss-badge");
+            const enemyEmoji = document.getElementById("enemy-emoji");
+
+            if (q.isBoss) {
+                bossBadge.classList.remove("hidden");
+                enemyEmoji.innerText = "👹";
+                document.getElementById("ai-message").innerText = "AI「ボス登場！心して挑め！」";
+                playSound('boss');
+            } else {
+                bossBadge.classList.add("hidden");
+                enemyEmoji.innerText = "👾";
+                document.getElementById("ai-message").innerText = "AI「この漢字の読みをひらがなで答えよ！」";
+            }
+
+            startTimer();
+        }
+
+        // ⭐ タイマー処理（30秒カウントダウン）
+        function startTimer() {
+            stopTimer();
+            timeRemaining = 30;
+            document.getElementById("timer-text").innerText = timeRemaining;
+
+            timer = setInterval(() => {
+                if (isPaused) return;
+
+                timeRemaining--;
+                document.getElementById("timer-text").innerText = timeRemaining;
+
+                if (timeRemaining <= 0) {
+                    handleTimeUp();
+                }
+            }, 1000);
+        }
+
+        function stopTimer() {
+            if (timer) {
+                clearInterval(timer);
+                timer = null;
+            }
+        }
+
+        // ⭐ タイムアップ処理（「タイムアップ！」とアラート表示してメニューへ戻る）
+        function handleTimeUp() {
+            stopTimer();
+            playSound('wrong');
+            document.getElementById("ai-message").innerText = "⏰ タイムアップ！";
+            alert("タイムアップ！");
+            goToTitle();
+        }
+
+        function updateLivesDisplay() {
+            document.getElementById("lives-container").innerText = "❤️".repeat(Math.max(0, lives));
+        }
+
+        // ⭐ 画面キーボード入力補助
+        function addKey(char) {
+            playSound('click');
+            const input = document.getElementById("user-input");
+            input.value += char;
+        }
+
+        function delKey() {
+            playSound('click');
+            const input = document.getElementById("user-input");
+            input.value = input.value.slice(0, -1);
+        }
+
+        function addDakuten() {
+            playSound('click');
+            const input = document.getElementById("user-input");
+            if (!input.value) return;
+            const last = input.value.slice(-1);
+            const dakutenMap = {
+                'か':'が','き':'ぎ','く':'ぐ','け':'げ','こ':'ご',
+                'さ':'ざ','し':'じ','す':'ず','せ':'ぜ','そ':'ぞ',
+                'た':'だ','ち':'ぢ','つ':'づ','て':'で','と':'ど',
+                'は':'ば','ひ':'び','ふ':'ぶ','へ':'べ','ほ':'ぼ'
+            };
+            if (dakutenMap[last]) {
+                input.value = input.value.slice(0, -1) + dakutenMap[last];
+            }
+        }
+
+        function addHandakuten() {
+            playSound('click');
+            const input = document.getElementById("user-input");
+            if (!input.value) return;
+            const last = input.value.slice(-1);
+            const handakutenMap = { 'は':'ぱ','ひ':'ぴ','ふ':'ぷ','へ':'ぺ','ほ':'ぽ' };
+            if (handakutenMap[last]) {
+                input.value = input.value.slice(0, -1) + handakutenMap[last];
+            }
+        }
+
+        // ⭐ 解答送信判定
+        function submitAnswer() {
+            const input = document.getElementById("user-input");
+            const userAns = input.value.trim();
+            if (!userAns) return;
+
+            const q = currentList[currentIndex];
+
+            if (userAns === q.reading) {
+                stopTimer();
+                playSound('correct');
+                showExplanationModal(q);
+            } else {
+                playSound('wrong');
+                const box = document.getElementById("enemy-box");
+                box.classList.add("shake");
+                setTimeout(() => box.classList.remove("shake"), 300);
+                document.getElementById("ai-message").innerText = "AI「ブッブー！不正解！」";
+                input.value = "";
+            }
+        }
+
+        // ⭐ 正解解説モーダル表示
+        function showExplanationModal(q) {
+            document.getElementById("modal-title").innerText = q.isBoss ? "🔥 BOSS撃破！" : "🎉 正解！";
+            document.getElementById("modal-kanji").innerText = q.kanji;
+            document.getElementById("modal-reading").innerText = `【${q.reading}】`;
+            document.getElementById("modal-meaning").innerText = q.meaning;
+            document.getElementById("modal-explanation").classList.remove("hidden");
+        }
+
+        // ⭐ 次のステージへ
+        function nextStage() {
+            playSound('click');
+            document.getElementById("modal-explanation").classList.add("hidden");
+            currentIndex++;
+
+            if (currentIndex >= currentList.length) {
+                document.getElementById("screen-game").classList.add("hidden");
+                document.getElementById("screen-clear").classList.remove("hidden");
+            } else {
+                loadStage();
+            }
+        }
+
+        // ⭐ 設定モーダル制御
+        function openSettings() {
+            playSound('click');
+            isPaused = true;
+            document.getElementById("modal-settings").classList.remove("hidden");
+        }
+
+        function saveSettings() {
+            playSound('click');
+            apiKey = document.getElementById("api-key-input").value.trim();
+            localStorage.setItem("groq_api_key", apiKey);
+            document.getElementById("modal-settings").classList.add("hidden");
+            isPaused = false;
+            checkApiAuthQuietly();
+        }
+
+        // ⭐ タイトルメニューに戻る
+        function goToTitle() {
+            playSound('click');
+            stopTimer();
+            document.getElementById("screen-gameover").classList.add("hidden");
+            document.getElementById("screen-clear").classList.add("hidden");
+            document.getElementById("screen-game").classList.add("hidden");
+            document.getElementById("screen-title").classList.remove("hidden");
+        }
+    </script>
+</body>
+</html>
