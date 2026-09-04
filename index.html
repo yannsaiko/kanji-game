@@ -57,7 +57,7 @@
         }
         .shake { animation: shake 0.3s ease-in-out; }
         
-        /* ⭐ 認証インジケーター（緑／赤の点） */
+        /* 認証インジケーター */
         .status-dot {
             width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-left: 6px;
             box-shadow: 0 0 8px currentColor;
@@ -81,7 +81,6 @@
         <div id="screen-title" style="width: 100%;">
             <div style="display: flex; align-items: center; justify-content: center; gap: 4px; margin-bottom: 5px;">
                 <h1 style="font-size: 28px; color: #facc15; margin: 0;">漢字ツアーズ AI</h1>
-                <!-- ⭐ 認証ステータスドット -->
                 <span id="api-status-dot" class="status-dot dot-gray" title="API認証確認中..."></span>
             </div>
             <p style="color: #94a3b8; margin-bottom: 20px; font-size: 14px;" id="ai-status-text">AI接続を確認中...</p>
@@ -210,11 +209,11 @@
     </div>
 
     <script>
-        // ⭐ APIキー
-        const HARDCODED_API_KEY = "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";
+        // APIキー設定
+        const HARDCODED_API_KEY = "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";
         let apiKey = localStorage.getItem("groq_api_key") || HARDCODED_API_KEY;
 
-        // ⭐ Web Audio API & BGMエンジン
+        // Web Audio API & BGMエンジン
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         let soundVolume = 0.5;
         let bgmInterval = null;
@@ -225,7 +224,6 @@
             playSound('click');
         }
 
-        // BGMシーケンサー
         function startBGM() {
             stopBGM();
             let noteIndex = 0;
@@ -286,7 +284,6 @@
             }
         }
 
-        // 起動時チェック
         window.onload = async () => {
             document.getElementById("api-key-input").value = apiKey;
             document.getElementById("volume-slider").value = soundVolume * 100;
@@ -348,7 +345,7 @@
                 { kanji: "醤油", reading: "しょうゆ", category: "一般常識", meaning: "大豆などを発酵させて作る調味料。", isBoss: false },
                 { kanji: "咀嚼", reading: "そしゃく", category: "一般常識", meaning: "食べ物をよく噛み砕いて味わうこと。", isBoss: false },
                 { kanji: "流石", reading: "さすが", category: "一般常識", meaning: "評判どおり感心させられる様子。", isBoss: false },
-                { kanji: "贔屓", reading: "ひいき", category: "一般常識", meaning: "自分の気に入った人を特に応援すること。", isBoss: false },
+                { kanji: "贔屓", reading: "ひいく", category: "一般常識", meaning: "自分の気に入った人を特に応援すること。", isBoss: false },
                 { kanji: "胡椒", reading: "こしょう", category: "一般常識【BOSS】", meaning: "ピリッとした辛味のあるスパイス調味料。", isBoss: true }
             ],
             "漢字王": [
@@ -389,7 +386,6 @@
             }
         }
 
-        // ⭐ ゲーム開始・問題生成
         async function startGame(mode) {
             playSound('click');
             activeMode = mode;
@@ -444,7 +440,6 @@
             loadStage();
         }
 
-        // ⭐ ステージ読み込み
         function loadStage() {
             const q = currentList[currentIndex];
             document.getElementById("stage-text").innerText = `STAGE ${currentIndex + 1} / ${currentList.length}`;
@@ -470,7 +465,6 @@
             startTimer();
         }
 
-        // ⭐ タイマー処理（30秒カウントダウン）
         function startTimer() {
             stopTimer();
             timeRemaining = 30;
@@ -495,7 +489,6 @@
             }
         }
 
-        // ⭐ タイムアップ処理（「タイムアップ！」とアラート表示してメニューへ戻る）
         function handleTimeUp() {
             stopTimer();
             playSound('wrong');
@@ -508,7 +501,6 @@
             document.getElementById("lives-container").innerText = "❤️".repeat(Math.max(0, lives));
         }
 
-        // ⭐ 画面キーボード入力補助
         function addKey(char) {
             playSound('click');
             const input = document.getElementById("user-input");
@@ -548,7 +540,6 @@
             }
         }
 
-        // ⭐ 解答送信判定
         function submitAnswer() {
             const input = document.getElementById("user-input");
             const userAns = input.value.trim();
@@ -570,7 +561,6 @@
             }
         }
 
-        // ⭐ 正解解説モーダル表示
         function showExplanationModal(q) {
             document.getElementById("modal-title").innerText = q.isBoss ? "🔥 BOSS撃破！" : "🎉 正解！";
             document.getElementById("modal-kanji").innerText = q.kanji;
@@ -579,7 +569,6 @@
             document.getElementById("modal-explanation").classList.remove("hidden");
         }
 
-        // ⭐ 次のステージへ
         function nextStage() {
             playSound('click');
             document.getElementById("modal-explanation").classList.add("hidden");
@@ -593,7 +582,6 @@
             }
         }
 
-        // ⭐ 設定モーダル制御
         function openSettings() {
             playSound('click');
             isPaused = true;
@@ -609,7 +597,6 @@
             checkApiAuthQuietly();
         }
 
-        // ⭐ タイトルメニューに戻る
         function goToTitle() {
             playSound('click');
             stopTimer();
