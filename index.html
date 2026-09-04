@@ -1,6 +1,6 @@
 <script>
-        // ⭐ APIキー（内蔵またはローカルストレージ）
-        const HARDCODED_API_KEY = "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";
+        // ⭐ APIキー（新しいキーに更新済み）
+        const HARDCODED_API_KEY = "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";
         let apiKey = localStorage.getItem("groq_api_key") || HARDCODED_API_KEY;
 
         // ⭐ Web Audio API & BGMエンジン
@@ -260,7 +260,7 @@
             startTimer();
         }
 
-        // ⭐ タイマー処理（30秒カウントダウン & タイムアップ判定）
+        // ⭐ タイマー処理（30秒カウントダウン）
         function startTimer() {
             stopTimer();
             timeRemaining = 30;
@@ -285,7 +285,7 @@
             }
         }
 
-        // ⭐ タイムアップ時の処理
+        // ⭐ タイムアップ処理
         function handleTimeUp() {
             stopTimer();
             playSound('wrong');
@@ -297,13 +297,11 @@
             setTimeout(() => box.classList.remove("shake"), 300);
 
             if (lives <= 0) {
-                // ライフ尽きてゲームオーバー
                 document.getElementById("screen-game").classList.add("hidden");
                 document.getElementById("screen-gameover").classList.remove("hidden");
                 document.getElementById("gameover-stats").innerText = 
                     `時間切れ！STAGE ${currentIndex + 1}「${currentList[currentIndex].kanji}」で全滅しました...`;
             } else {
-                // ライフ減小後にタイマーを再始動して継続
                 document.getElementById("ai-message").innerText = `AI「タイムアップ！ 残りライフ: ${lives}」`;
                 document.getElementById("user-input").value = "";
                 startTimer();
@@ -363,12 +361,10 @@
             const q = currentList[currentIndex];
 
             if (userAns === q.reading) {
-                // 正解
                 stopTimer();
                 playSound('correct');
                 showExplanationModal(q);
             } else {
-                // 不正解（ペナルティ & リセット）
                 playSound('wrong');
                 const box = document.getElementById("enemy-box");
                 box.classList.add("shake");
@@ -387,14 +383,13 @@
             document.getElementById("modal-explanation").classList.remove("hidden");
         }
 
-        // ⭐ 次のステージへ進む
+        // ⭐ 次のステージへ
         function nextStage() {
             playSound('click');
             document.getElementById("modal-explanation").classList.add("hidden");
             currentIndex++;
 
             if (currentIndex >= currentList.length) {
-                // 全ステージクリア
                 document.getElementById("screen-game").classList.add("hidden");
                 document.getElementById("screen-clear").classList.remove("hidden");
             } else {
